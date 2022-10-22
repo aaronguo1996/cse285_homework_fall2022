@@ -75,14 +75,13 @@ class DQNCritic(BaseCritic):
             # target Q-network. Please review Lecture 8 for more details,
             # and page 4 of https://arxiv.org/pdf/1509.06461.pdf is also a good reference.
             best_ac = self.q_net(next_ob_no).argmax(dim=1)
-            q_tp1 = qa_tp1_values[:,best_ac]
+            q_tp1 = torch.gather(qa_tp1_values, 1, best_ac.unsqueeze(1)).squeeze(1)
         else:
             q_tp1, _ = qa_tp1_values.max(dim=1)
 
         # compute targets for minimizing Bellman error
         # currentReward + self.gamma * qValuesOfNextTimestep * (not terminal)
-        is_not_terminal = torch.logical_not(terminal_n, out=torch.zeros_like(terminal_n))
-        target = reward_n + self.gamma * q_tp1 * is_not_terminal
+        target = reward_n + self.gamma * q_tp1 * (1 - terminal_n)
         target = target.detach()
 
         assert q_t_values.shape == target.shape

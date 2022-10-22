@@ -86,6 +86,11 @@ class MLPPolicy(BasePolicy, nn.Module, metaclass=abc.ABCMeta):
 
     # query the policy with observation(s) to get selected action(s)
     def get_action(self, obs: np.ndarray) -> np.ndarray:
+        if len(obs.shape) > 1:
+            observation = obs
+        else:
+            observation = obs[None]
+            
         action_dist = self.forward(ptu.from_numpy(observation))
         action = action_dist.sample()
         return ptu.to_numpy(action)
