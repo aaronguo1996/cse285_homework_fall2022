@@ -254,7 +254,8 @@ class RL_Trainer(object):
                     episode_step = 0
                     episode_return = 0
 
-                action = self.agent.actor.get_action(obs)[0]
+                action, _ = self.agent.actor.get_action(obs)
+                action = ptu.to_numpy(action)[0]
                 next_obs, rew, done, _ = self.env.step(action)
 
                 episode_return += rew
@@ -302,9 +303,11 @@ class RL_Trainer(object):
             train_video_paths: paths which also contain videos for visualization purposes
         """
         if itr == 0:
-            with open(initial_expertdata, 'rb') as data:
-                loaded_paths = pickle.load(data)
-                return loaded_paths, 0, None
+            if initial_expertdata is not None:
+                paths = pickle.load(open(self.params['expert_data'], 'rb'))
+                return paths, 0, None
+            if save_expert_data_to_disk:
+                num_transitions_to_sample = self.params['batch_size_initial']
 
         print("\nCollecting data to be used for training...")
         sample_result = utils.sample_trajectories(self.env, collect_policy, num_transitions_to_sample, self.params['ep_len'])
@@ -313,9 +316,13 @@ class RL_Trainer(object):
         # collect more rollouts with the same policy, to be saved as videos in tensorboard
         # note: here, we collect MAX_NVIDEO rollouts, each of length MAX_VIDEO_LEN
         train_video_paths = None
-        if self.log_video:
+        if self.logvideo:
             print('\nCollecting train rollouts to be used for saving videos...')
             train_video_paths = utils.sample_n_trajectories(self.env, collect_policy, MAX_NVIDEO, MAX_VIDEO_LEN, True)
+
+        if save_expert_data_to_disk and itr == 0:
+            with open('expert_data_{}.pkl'.format(self.params['env_name']), 'wb') as file:
+                pickle.dump(paths, file)
 
         return paths, envsteps_this_batch, train_video_paths
 

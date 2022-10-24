@@ -90,7 +90,7 @@ class MLPPolicy(BasePolicy, nn.Module, metaclass=abc.ABCMeta):
             observation = obs
         else:
             observation = obs[None]
-            
+
         action_dist = self.forward(ptu.from_numpy(observation))
         action = action_dist.sample()
         return ptu.to_numpy(action)
@@ -126,5 +126,15 @@ class MLPPolicy(BasePolicy, nn.Module, metaclass=abc.ABCMeta):
 
 class MLPPolicyAC(MLPPolicy):
     def update(self, observations, actions, adv_n=None):
-        # TODO: update the policy and return the loss
+        observations = ptu.from_numpy(observations)
+        actions = ptu.from_numpy(actions)
+        advantages = ptu.from_numpy(adv_n)
+
+        action_dist = self.forward(observations)
+        loss = torch.neg(torch.mean(torch.multiply(action_dist.log_prob(actions), advantages)))
+
+        self.optimizer.zero_grad()
+        loss.backward()
+        self.optimizer.step()
+
         return loss.item()

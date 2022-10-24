@@ -53,7 +53,7 @@ class BootstrappedContinuousCritic(nn.Module, BaseCritic):
         predictions = self(obs)
         return ptu.to_numpy(predictions)
 
-    def update(self, ob_no, ac_na, next_ob_no, reward_n, terminal_n):
+    def update(self, ob_no, next_ob_no, reward_n, terminal_n):
         """
             Update the parameters of the critic.
 
@@ -85,5 +85,17 @@ class BootstrappedContinuousCritic(nn.Module, BaseCritic):
         #       to 0) when a terminal state is reached
         # HINT: make sure to squeeze the output of the critic_network to ensure
         #       that its dimensions match the reward
+        for i in range(self.num_target_updates * self.num_grad_steps_per_target_update):
+            if i % self.num_grad_steps_per_target_update == 0:
+                # this should not be added to gradient descent?
+                v_tp1 = self.forward_np(next_ob_no)
+                v_target = reward_n + self.gamma * v_tp1 * (1 - terminal_n)
+            
+            v_t = self.critic_network(ptu.from_numpy(ob_no))
+
+            self.optimizer.zero_grad()
+            loss = self.loss(v_t.squeeze(1), ptu.from_numpy(v_target))
+            loss.backward()
+            self.optimizer.step()
 
         return loss.item()
